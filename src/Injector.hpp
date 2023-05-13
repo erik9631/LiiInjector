@@ -236,6 +236,6 @@ namespace LiiInjector
     };
 }
 
-LiiInjector::Injector* const LiiInjector::Injector::instance = new LiiInjector::Injector();
+inline LiiInjector::Injector* const LiiInjector::Injector::instance = new LiiInjector::Injector();
 
 #endif //LIIINJECTOR_INJECTOR_HPP
