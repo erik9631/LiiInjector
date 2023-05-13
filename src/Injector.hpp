@@ -71,7 +71,7 @@ namespace LiiInjector
         }
 
         template<typename T>
-        [[maybe_unused]] void RegisterSingleton(const std::string& tag)
+        [[maybe_unused]] void RegisterSingletonTag(const std::string& tag)
         {
             static_assert(std::is_base_of<Injectable, T>::value, "T must be a child of Injectable");
             std::unique_ptr<T> singleton = std::unique_ptr<T>(new T());
@@ -100,7 +100,7 @@ namespace LiiInjector
         }
 
         template<typename T>
-        [[maybe_unused]] void RegisterSingleton(const std::function <std::unique_ptr<Injectable>()>& function, const std::string& tag)
+        [[maybe_unused]] void RegisterSingletonTag(const std::function <std::unique_ptr<Injectable>()>& function, const std::string& tag)
         {
             static_assert(std::is_base_of<Injectable, T>::value, "T must be a child of Injectable");
             auto result = tagSingletons.try_emplace(tag, function());
@@ -110,7 +110,7 @@ namespace LiiInjector
         }
 
         template<class T>
-        T* ResolveSingleton(const std::string& tag)
+        T* ResolveSingletonTag(const std::string& tag)
         {
             static_assert(std::is_base_of<Injectable, T>::value, "T must be a child of Injectable");
             auto it = tagSingletons.find(tag);

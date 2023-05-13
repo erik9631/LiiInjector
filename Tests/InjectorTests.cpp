@@ -123,12 +123,12 @@ TEST_CASE("Singleton registration and resolve")
 
     SUBCASE("with a tag")
     {
-        injector.RegisterSingleton<TestInjectable>("test");
-        injector.RegisterSingleton<TestInjectable>("tes2");
+        injector.RegisterSingletonTag<TestInjectable>("test");
+        injector.RegisterSingletonTag<TestInjectable>("tes2");
         try
         {
-            auto* instance = injector.ResolveSingleton<TestInjectable>("test");
-            auto* instance2 = injector.ResolveSingleton<TestInjectable>("test");
+            auto* instance = injector.ResolveSingletonTag<TestInjectable>("test");
+            auto* instance2 = injector.ResolveSingletonTag<TestInjectable>("test");
             CHECK(true);
             CHECK(instance->a == 0);
             CHECK(instance2->a == 0);
@@ -142,23 +142,23 @@ TEST_CASE("Singleton registration and resolve")
 
     SUBCASE("Factory with a tag")
     {
-        injector.RegisterSingleton<TestInjectable>([]() -> std::unique_ptr<Injectable>
+        injector.RegisterSingletonTag<TestInjectable>([]() -> std::unique_ptr<Injectable>
         {
-           auto instance = std::make_unique<TestInjectable>();
-           instance->a = 5;
-           return instance;
+            auto instance = std::make_unique<TestInjectable>();
+            instance->a = 5;
+            return instance;
         }, "test");
 
-        injector.RegisterSingleton<TestInjectable>([]() -> std::unique_ptr<Injectable>
+        injector.RegisterSingletonTag<TestInjectable>([]() -> std::unique_ptr<Injectable>
         {
-           auto instance = std::make_unique<TestInjectable>();
-           instance->a = 2;
-           return instance;
+            auto instance = std::make_unique<TestInjectable>();
+            instance->a = 2;
+            return instance;
         }, "test2");
         try
         {
-            auto* instance = injector.ResolveSingleton<TestInjectable>("test");
-            auto* instance2 = injector.ResolveSingleton<TestInjectable>("test2");
+            auto* instance = injector.ResolveSingletonTag<TestInjectable>("test");
+            auto* instance2 = injector.ResolveSingletonTag<TestInjectable>("test2");
             CHECK(true);
             CHECK(instance->a == 5);
             CHECK(instance2->a == 2);
@@ -219,14 +219,14 @@ TEST_CASE("Singleton registration and resolve with polymorphism")
 
     SUBCASE("Factory with a tag ")
     {
-        injector.RegisterSingleton<TestInjectableInterface>([]() -> std::unique_ptr<Injectable>
+        injector.RegisterSingletonTag<TestInjectableInterface>([]() -> std::unique_ptr<Injectable>
         {
             auto instance = std::make_unique<TestInjectable2>();
             instance->a = 5;
             return instance;
         }, "test1");
 
-        injector.RegisterSingleton<TestInjectableInterface>([]() -> std::unique_ptr<Injectable>
+        injector.RegisterSingletonTag<TestInjectableInterface>([]() -> std::unique_ptr<Injectable>
         {
             auto instance = std::make_unique<TestInjectable2>();
             instance->a = 2;
@@ -235,8 +235,8 @@ TEST_CASE("Singleton registration and resolve with polymorphism")
 
         try
         {
-            auto* instance = injector.ResolveSingleton<TestInjectableInterface>("test1");
-            auto* instance2 = injector.ResolveSingleton<TestInjectableInterface>("test2");
+            auto* instance = injector.ResolveSingletonTag<TestInjectableInterface>("test1");
+            auto* instance2 = injector.ResolveSingletonTag<TestInjectableInterface>("test2");
             CHECK(true);
             CHECK(instance->GetA() == 5);
             CHECK(instance2->GetA() == 2);
@@ -265,22 +265,22 @@ TEST_CASE("Singleton registration and fail with polymorphism")
 
     SUBCASE("Factory with a tag ")
     {
-        injector.RegisterSingleton<TestInjectableInterface>([]() -> std::unique_ptr<Injectable>
+        injector.RegisterSingletonTag<TestInjectableInterface>([]() -> std::unique_ptr<Injectable>
         {
             auto instance = std::make_unique<TestInjectable>();
             instance->a = 5;
             return instance;
         }, "test1");
 
-        injector.RegisterSingleton<TestInjectableInterface>([]() -> std::unique_ptr<Injectable>
+        injector.RegisterSingletonTag<TestInjectableInterface>([]() -> std::unique_ptr<Injectable>
         {
             auto instance = std::make_unique<TestInjectable>();
             instance->a = 2;
             return instance;
         }, "test2");
 
-        CHECK_THROWS_WITH_AS(injector.ResolveSingleton<TestInjectableInterface>("test1"), "Singleton type mismatch!", std::runtime_error);
-        CHECK_THROWS_WITH_AS(injector.ResolveSingleton<TestInjectableInterface>("test2"), "Singleton type mismatch!", std::runtime_error);
+        CHECK_THROWS_WITH_AS(injector.ResolveSingletonTag<TestInjectableInterface>("test1"), "Singleton type mismatch!", std::runtime_error);
+        CHECK_THROWS_WITH_AS(injector.ResolveSingletonTag<TestInjectableInterface>("test2"), "Singleton type mismatch!", std::runtime_error);
     }
 }
 
@@ -295,8 +295,8 @@ TEST_CASE("Singleton Registration exception")
 
     SUBCASE("with a tag resolve failure")
     {
-        injector.RegisterSingleton<TestInjectable>("test");
-        CHECK_THROWS_AS(injector.ResolveSingleton<TestInjectable>("test2"), const std::runtime_error&);
+        injector.RegisterSingletonTag<TestInjectable>("test");
+        CHECK_THROWS_AS(injector.ResolveSingletonTag<TestInjectable>("test2"), const std::runtime_error&);
     }
 }
 
