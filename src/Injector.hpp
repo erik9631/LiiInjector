@@ -15,6 +15,26 @@
 
 namespace LiiInjector
 {
+    template<class ... Args>
+    class FunctionWrapper
+    {
+    public:
+        explicit FunctionWrapper(const std::function<Injectable*(Args...)>& factoryFunc) :
+                factoryFunc(factoryFunc)
+        {
+
+        }
+        template<class T>
+        std::type_index GenerateTypeSignature()
+        {
+            typeSignature = std::type_index(typeid(std::tuple<T, Args...>));
+            return typeSignature;
+        }
+        std::function<Injectable*(Args...)> factoryFunc;
+        std::type_index typeSignature = typeid(FunctionWrapper);
+    };
+
+
     class Injector
     {
     private:
@@ -93,6 +113,20 @@ namespace LiiInjector
             if(result == nullptr)
                 throw std::runtime_error("Singleton type mismatch!");
             return result;
+        }
+
+        template<typename T, typename F>
+        [[maybe_unused]] void RegisterTransientNew(const F& factoryLambda)
+        {
+            static_assert(std::is_base_of<Injectable, T>::value, "T must be a child of Injectable");
+            std::function factoryFunc{factoryLambda};
+            FunctionWrapper functionWrapper{factoryFunc};
+            functionWrapper.template GenerateTypeSignature<T>();
+            functionWrapper.factoryFunc(5);
+//            auto result = transient.try_emplace(functionWrapper.typeSignature, functionWrapper);
+//
+//            if (!result.second)
+//                throw std::runtime_error("Type already registered!");
         }
 
         template<typename T>

@@ -279,6 +279,16 @@ TEST_CASE("Transient registration and resolve")
         }
     }
 
+    SUBCASE("Multi arguments without a tag")
+    {
+        injector.RegisterTransientNew<TestInjectable>([](int a) -> Injectable*{
+            std::cout << "Called" << a << std::endl;
+            auto instance = new TestInjectable();
+            instance->a = a;
+            return instance;
+        });
+    }
+
     SUBCASE("With a tag")
     {
         injector.RegisterTransient<TestInjectable>("test1");
