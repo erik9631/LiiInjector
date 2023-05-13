@@ -68,23 +68,22 @@ public:
 
 };
 
-TEST_CASE("Multiparam Test with strings and long")
+TEST_CASE("Multiparam Test with strings and pointers")
 {
     auto injector = Injector{};
     SUBCASE("Without a tag")
     {
 
-
-        injector.RegisterTransient<TestInjectable4>([](const std::string&, long val) -> Injectable*
+        int* a = new int{5};
+        injector.RegisterTransient<TestInjectable4>([](const std::string&, int* a) -> Injectable*
         {
-            auto instance = new TestInjectable4("test", val);
+            auto instance = new TestInjectable4("test", *a);
             return instance;
         });
 
         try
         {
-            std::string str = "test";
-            auto instance = injector.ResolveTransient<TestInjectable4, const std::string &, long>("test", 5);
+            auto instance = injector.ResolveTransient<TestInjectable4, const std::string &, int*>("test", a);
             CHECK(true);
             CHECK(instance->a == "test");
             CHECK(instance->b == 5);
