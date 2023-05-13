@@ -7,6 +7,6 @@ set(all_files
         ${injector}
 )
 
-add_library(${CMAKE_PROJECT_NAME} INTERFACE ${all_files})
+add_library(${PROJECT_NAME} INTERFACE ${all_files})
 target_include_directories(${PROJECT_NAME} INTERFACE .
 )
