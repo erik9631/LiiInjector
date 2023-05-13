@@ -195,7 +195,7 @@ namespace LiiInjector
 
 
         template<typename T, typename ... Args>
-        std::unique_ptr<T> ResolveTransient(Args&& ... args)
+        std::unique_ptr<T> ResolveTransient(Args ... args)
         {
             static_assert(std::is_base_of<Injectable, T>::value, "T must be a child of Injectable");
             auto it = transient.find(FunctionWrapper<Args ...>::template GetTypeSignature<T>());
@@ -206,7 +206,7 @@ namespace LiiInjector
             if(functionWrapper == nullptr)
                 throw std::runtime_error("Factory function mismatch!");
 
-            auto result = dynamic_cast<T*>(functionWrapper->factoryFunc(std::forward<Args>(args) ...));
+            auto result = dynamic_cast<T*>(functionWrapper->factoryFunc(std::move(args) ...));
             if(result == nullptr)
                 throw std::runtime_error("Type mismatch!");
             return std::unique_ptr<T>(result);
