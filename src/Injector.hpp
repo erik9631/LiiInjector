@@ -136,7 +136,9 @@ namespace LiiInjector
         }
 
         template<typename T, typename F>
-        [[maybe_unused]] void RegisterTransientFactory(const F& factoryLambda)
+        std::enable_if_t<!std::disjunction<std::is_same<std::decay_t<F>, std::string>,
+                std::is_same<std::decay_t<F>, const char*>>::value, void>
+        RegisterTransient(const F&& factoryLambda)
         {
             static_assert(std::is_base_of<Injectable, T>::value, "T must be a child of Injectable");
             std::function factoryFunc{factoryLambda};
@@ -149,7 +151,7 @@ namespace LiiInjector
         }
 
         template<typename T, typename F>
-        [[maybe_unused]] void RegisterTransientFactory(const F& factoryLambda, const std::string& tag)
+        [[maybe_unused]] void RegisterTransient(const F& factoryLambda, const std::string& tag)
         {
             static_assert(std::is_base_of<Injectable, T>::value, "T must be a child of Injectable");
             std::function factoryFunc{factoryLambda};
@@ -164,13 +166,15 @@ namespace LiiInjector
         template<typename T>
         [[maybe_unused]] void RegisterTransient()
         {
-            RegisterTransientFactory<T>([]() -> Injectable* {return new T();});
+            RegisterTransient<T>([]() -> Injectable *
+            { return new T(); });
         }
 
         template<typename T>
         [[maybe_unused]] void RegisterTransient(const std::string& tag)
         {
-            RegisterTransientFactory<T>([]() -> Injectable* {return new T();}, tag);
+            RegisterTransient<T>([]() -> Injectable *
+            { return new T(); }, tag);
         }
 
         template<typename T>
