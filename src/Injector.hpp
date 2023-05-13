@@ -136,9 +136,7 @@ namespace LiiInjector
         }
 
         template<typename T, typename F>
-        std::enable_if_t<!std::disjunction<std::is_same<std::decay_t<F>, std::string>,
-                std::is_same<std::decay_t<F>, const char*>>::value, void>
-        RegisterTransient(const F&& factoryLambda)
+        void RegisterTransient(const F&& factoryLambda)
         {
             static_assert(std::is_base_of<Injectable, T>::value, "T must be a child of Injectable");
             std::function factoryFunc{factoryLambda};
@@ -151,7 +149,7 @@ namespace LiiInjector
         }
 
         template<typename T, typename F>
-        [[maybe_unused]] void RegisterTransient(const F& factoryLambda, const std::string& tag)
+        [[maybe_unused]] void RegisterTransientTag(const F& factoryLambda, const std::string& tag)
         {
             static_assert(std::is_base_of<Injectable, T>::value, "T must be a child of Injectable");
             std::function factoryFunc{factoryLambda};
@@ -171,9 +169,9 @@ namespace LiiInjector
         }
 
         template<typename T>
-        [[maybe_unused]] void RegisterTransient(const std::string& tag)
+        [[maybe_unused]] void RegisterTransientTag(const std::string& tag)
         {
-            RegisterTransient<T>([]() -> Injectable *
+            RegisterTransientTag<T>([]() -> Injectable *
             { return new T(); }, tag);
         }
 
@@ -196,28 +194,26 @@ namespace LiiInjector
         }
 
 
-        template<typename T, typename FirstArg, typename ... Args>
-        std::enable_if_t<!std::disjunction<std::is_same<std::decay_t<FirstArg>, std::string>,
-                std::is_same<std::decay_t<FirstArg>, const char*>>::value, std::unique_ptr<T>>
-        ResolveTransient(FirstArg&& arg, Args&& ... args)
+        template<typename T, typename ... Args>
+        std::unique_ptr<T> ResolveTransient(Args&& ... args)
         {
             static_assert(std::is_base_of<Injectable, T>::value, "T must be a child of Injectable");
-            auto it = transient.find(FunctionWrapper<FirstArg, Args ...>::template GetTypeSignature<T>());
+            auto it = transient.find(FunctionWrapper<Args ...>::template GetTypeSignature<T>());
             if (it == transient.end())
                 throw std::runtime_error("Type not registered!");
 
-            auto* functionWrapper = dynamic_cast<FunctionWrapper<FirstArg, Args...>*>(it->second.get());
+            auto* functionWrapper = dynamic_cast<FunctionWrapper<Args...>*>(it->second.get());
             if(functionWrapper == nullptr)
                 throw std::runtime_error("Factory function mismatch!");
 
-            auto result = dynamic_cast<T*>(functionWrapper->factoryFunc(std::forward<FirstArg>(arg), std::forward<Args>(args) ...));
+            auto result = dynamic_cast<T*>(functionWrapper->factoryFunc(std::forward<Args>(args) ...));
             if(result == nullptr)
                 throw std::runtime_error("Type mismatch!");
             return std::unique_ptr<T>(result);
         }
 
         template<typename T, typename ... Args>
-        std::unique_ptr<T> ResolveTransient(const std::string& tag, Args&& ... args)
+        std::unique_ptr<T> ResolveTransientTag(const std::string& tag, Args&& ... args)
         {
             static_assert(std::is_base_of<Injectable, T>::value, "T must be a child of Injectable");
             auto it = transientTag.find(tag);
