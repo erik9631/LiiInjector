@@ -36,6 +36,25 @@ public:
     }
 };
 
+class TestInjectable3 : public TestInjectableInterface
+{
+public:
+    int a = 0;
+    float b = 0;
+    std::unique_ptr<TestInjectable2> obj;
+    TestInjectable3(int a, float b, std::unique_ptr<TestInjectable2> obj)
+    {
+        this->a = a;
+        this->b = b;
+        this ->obj = std::move(obj);
+    }
+    ~TestInjectable3() override = default;
+    int GetA() override
+    {
+        return a;
+    }
+};
+
 TEST_CASE("Singleton registration and resolve")
 {
     auto injector = Injector{};
@@ -279,16 +298,6 @@ TEST_CASE("Transient registration and resolve")
         }
     }
 
-    SUBCASE("Multi arguments without a tag")
-    {
-        injector.RegisterTransientNew<TestInjectable>([](int a) -> Injectable*{
-            std::cout << "Called" << a << std::endl;
-            auto instance = new TestInjectable();
-            instance->a = a;
-            return instance;
-        });
-    }
-
     SUBCASE("With a tag")
     {
         injector.RegisterTransient<TestInjectable>("test1");
@@ -352,13 +361,13 @@ TEST_CASE("Transient registration and resolve")
 
     SUBCASE("Factory without a tag")
     {
-        injector.RegisterTransient<TestInjectable>([]() -> Injectable*
+        injector.RegisterTransientFactory<TestInjectable>([]() -> Injectable*
         {
             auto instance = new TestInjectable();
             instance->a = 1;
             return instance;
         });
-        injector.RegisterTransient<TestInjectable2>([]() -> Injectable*
+        injector.RegisterTransientFactory<TestInjectable2>([]() -> Injectable*
         {
             auto instance = new TestInjectable2();
             instance->a = 2;
@@ -382,25 +391,25 @@ TEST_CASE("Transient registration and resolve")
 
     SUBCASE("Factory with a tag")
     {
-        injector.RegisterTransient<TestInjectable>([]() -> Injectable *
+        injector.RegisterTransientFactory<TestInjectable>([]() -> Injectable *
         {
             auto instance = new TestInjectable();
             instance->a = 1;
             return instance;
         }, "test1");
-        injector.RegisterTransient<TestInjectable>([]() -> Injectable *
+        injector.RegisterTransientFactory<TestInjectable>([]() -> Injectable *
         {
             auto instance = new TestInjectable();
             instance->a = 2;
             return instance;
         }, "test2");
-        injector.RegisterTransient<TestInjectable2>([]() -> Injectable *
+        injector.RegisterTransientFactory<TestInjectable2>([]() -> Injectable *
         {
             auto instance = new TestInjectable2();
             instance->a = 3;
             return instance;
         }, "test3");
-        injector.RegisterTransient<TestInjectable2>([]() -> Injectable *
+        injector.RegisterTransientFactory<TestInjectable2>([]() -> Injectable *
         {
             auto instance = new TestInjectable2();
             instance->a = 4;
@@ -427,6 +436,132 @@ TEST_CASE("Transient registration and resolve")
     }
 }
 
+TEST_CASE("Transient registration and resolve with multiarguments")
+{
+    auto injector = Injector{};
+    SUBCASE("Multi arguments without a tag")
+    {
+        injector.RegisterTransientFactory<TestInjectable3>([](int a, float b, std::unique_ptr<TestInjectable2> c) -> Injectable*{
+            auto instance = new TestInjectable3(a, b, std::move(c));
+            return instance;
+        });
+
+        injector.RegisterTransientFactory<TestInjectable3>([](int a, std::unique_ptr<TestInjectable2> c) -> Injectable*{
+            auto instance = new TestInjectable3(a, 3.0f, std::move(c));
+            return instance;
+        });
+
+        try
+        {
+            auto instance = injector.ResolveTransient<TestInjectable3>(1, 2.0f, std::make_unique<TestInjectable2>());
+            auto instance2 = injector.ResolveTransient<TestInjectable3>(1, std::make_unique<TestInjectable2>());
+            CHECK(true);
+            CHECK(instance->a == 1);
+            CHECK(instance->b == 2.0f);
+            CHECK(instance->obj->a == 0);
+            CHECK(instance2->a == 1);
+            CHECK(instance2->b == 3.0f);
+            CHECK(instance2->obj->a == 0);
+        }
+        catch (const std::runtime_error& e)
+        {
+            INFO(std::string_view(e.what()));
+            CHECK(false);
+        }
+
+    }
+
+    SUBCASE("Multi arguments with a tag")
+    {
+        injector.RegisterTransientFactory<TestInjectable3>([](int a, float b, std::unique_ptr<TestInjectable2> c) -> Injectable*{
+            auto instance = new TestInjectable3(a, b, std::move(c));
+            return instance;
+        }, "test1");
+
+        injector.RegisterTransientFactory<TestInjectable3>([](int a, float b, std::unique_ptr<TestInjectable2> c) -> Injectable*{
+            auto instance = new TestInjectable3(a, b * 3.0f, std::move(c));
+            return instance;
+        }, "test2");
+
+        try
+        {
+            auto instance = injector.ResolveTransient<TestInjectable3>("test1", 1, 2.0f, std::make_unique<TestInjectable2>());
+            auto instance2 = injector.ResolveTransient<TestInjectable3>("test2", 1, 2.0f, std::make_unique<TestInjectable2>());
+            CHECK(true);
+            CHECK(instance->a == 1);
+            CHECK(instance->b == 2.0f);
+            CHECK(instance->obj->a == 0);
+            CHECK(instance2->a == 1);
+            CHECK(instance2->b == 6.0f);
+            CHECK(instance2->obj->a == 0);
+        }
+        catch (const std::runtime_error& e)
+        {
+            INFO(std::string_view(e.what()));
+            CHECK(false);
+        }
+    }
+}
+
+TEST_CASE("Transient registration and resolve with multiarguments and polymorphism")
+{
+    auto injector = Injector{};
+    SUBCASE("Multi arguments without a tag")
+    {
+        injector.RegisterTransientFactory<TestInjectableInterface>([](int a, float b, std::unique_ptr<TestInjectable2> c) -> Injectable*{
+            auto instance = new TestInjectable3(a, b, std::move(c));
+            return instance;
+        });
+
+        injector.RegisterTransientFactory<TestInjectableInterface>([](int a, std::unique_ptr<TestInjectable2> c) -> Injectable*{
+            auto instance = new TestInjectable3(a, 3.0f, std::move(c));
+            return instance;
+        });
+
+        try
+        {
+            auto instance = injector.ResolveTransient<TestInjectableInterface>(5, 2.0f, std::make_unique<TestInjectable2>());
+            auto instance2 = injector.ResolveTransient<TestInjectableInterface>(6, std::make_unique<TestInjectable2>());
+            CHECK(true);
+            CHECK(instance->GetA() == 5);
+            CHECK(instance2->GetA() == 6);
+        }
+        catch (const std::runtime_error& e)
+        {
+            INFO(std::string_view(e.what()));
+            CHECK(false);
+        }
+
+    }
+
+    SUBCASE("Multi arguments with a tag")
+    {
+        injector.RegisterTransientFactory<TestInjectableInterface>([](int a, float b, std::unique_ptr<TestInjectable2> c) -> Injectable*{
+            auto instance = new TestInjectable3(a, b, std::move(c));
+            return instance;
+        }, "test1");
+
+        injector.RegisterTransientFactory<TestInjectableInterface>([](int a, float b, std::unique_ptr<TestInjectable2> c) -> Injectable*{
+            auto instance = new TestInjectable3(a, b * 3.0f, std::move(c));
+            return instance;
+        }, "test2");
+
+        try
+        {
+            auto instance = injector.ResolveTransient<TestInjectableInterface>("test1", 5, 2.0f, std::make_unique<TestInjectable2>());
+            auto instance2 = injector.ResolveTransient<TestInjectableInterface>("test2", 6, 2.0f, std::make_unique<TestInjectable2>());
+            CHECK(true);
+            CHECK(instance->GetA() == 5);
+            CHECK(instance2->GetA() == 6);
+        }
+        catch (const std::runtime_error& e)
+        {
+            INFO(std::string_view(e.what()));
+            CHECK(false);
+        }
+    }
+}
+
 TEST_CASE("Transient registration and resolve with polymorphism")
 {
     auto injector = Injector{};
@@ -434,7 +569,7 @@ TEST_CASE("Transient registration and resolve with polymorphism")
     SUBCASE("without a tag ")
     {
         int counter = 1;
-        injector.RegisterTransient<TestInjectableInterface>([&]() -> Injectable*
+        injector.RegisterTransientFactory<TestInjectableInterface>([&]() -> Injectable*
         {
             auto instance = new TestInjectable2();
             instance->a = counter;
@@ -464,19 +599,19 @@ TEST_CASE("Transient registration and resolve with polymorphism")
 
     SUBCASE("With a tag")
     {
-        injector.RegisterTransient<TestInjectableInterface>([&]() -> Injectable*
+        injector.RegisterTransientFactory<TestInjectableInterface>([&]() -> Injectable*
         {
             auto instance = new TestInjectable2();
             instance->a = 1;
             return instance;
         }, "test1");
-        injector.RegisterTransient<TestInjectableInterface>([&]() -> Injectable*
+        injector.RegisterTransientFactory<TestInjectableInterface>([&]() -> Injectable*
         {
             auto instance = new TestInjectable2();
             instance->a = 2;
             return instance;
         }, "test2");
-        injector.RegisterTransient<TestInjectableInterface>([&]() -> Injectable*
+        injector.RegisterTransientFactory<TestInjectableInterface>([&]() -> Injectable*
         {
             auto instance = new TestInjectable2();
             instance->a = 3;
@@ -503,20 +638,51 @@ TEST_CASE("Transient registration and resolve with polymorphism")
     }
 }
 
+TEST_CASE("Transient registration exception with multiparam")
+{
+    auto injector = Injector{};
+
+    SUBCASE("Without a tag")
+    {
+        injector.RegisterTransientFactory<TestInjectable2>([](int a, float b, std::unique_ptr<TestInjectable2> c) -> Injectable*{
+            auto instance = new TestInjectable3(a, b, std::move(c));
+            return instance;
+        });
+
+        CHECK_THROWS(injector.RegisterTransientFactory<TestInjectable2>([](int a, float b, std::unique_ptr<TestInjectable2> c) -> Injectable*{
+            auto instance = new TestInjectable3(a, b, std::move(c));
+            return instance;
+        }));
+    }
+
+    SUBCASE("With a tag")
+    {
+        injector.RegisterTransientFactory<TestInjectable2>([](int a, float b, std::unique_ptr<TestInjectable2> c) -> Injectable*{
+            auto instance = new TestInjectable3(a, b, std::move(c));
+            return instance;
+        }, "test1");
+
+        CHECK_THROWS(injector.RegisterTransientFactory<TestInjectable2>([](int a, float b, std::unique_ptr<TestInjectable2> c) -> Injectable*{
+            auto instance = new TestInjectable3(a, b, std::move(c));
+            return instance;
+        }, "test1"));
+    }
+}
+
 TEST_CASE("Transient registration exception")
 {
     auto injector = Injector{};
 
     SUBCASE("Without a tag")
     {
-        injector.RegisterTransient<TestInjectable>([]() -> Injectable*
+        injector.RegisterTransientFactory<TestInjectable>([]() -> Injectable*
         {
             auto instance = new TestInjectable();
             instance->a = 1;
             return instance;
         });
 
-        CHECK_THROWS(injector.RegisterTransient<TestInjectable>([]() -> Injectable*
+        CHECK_THROWS(injector.RegisterTransientFactory<TestInjectable>([]() -> Injectable*
         {
             auto instance = new TestInjectable();
             instance->a = 2;
@@ -526,17 +692,48 @@ TEST_CASE("Transient registration exception")
 
     SUBCASE("With a tag")
     {
-        injector.RegisterTransient<TestInjectable>([]() -> Injectable*
+        injector.RegisterTransientFactory<TestInjectable>([]() -> Injectable*
         {
             auto instance = new TestInjectable();
             instance->a = 1;
             return instance;
         }, "test1");
 
-        CHECK_THROWS(injector.RegisterTransient<TestInjectable>([]() -> Injectable*
+        CHECK_THROWS(injector.RegisterTransientFactory<TestInjectable>([]() -> Injectable*
         {
             auto instance = new TestInjectable();
             instance->a = 2;
+            return instance;
+        }, "test1"));
+    }
+}
+
+TEST_CASE("Transient registration and fail with polymorphism and multiparams")
+{
+    auto injector = Injector{};
+
+    SUBCASE("Without a tag")
+    {
+        injector.RegisterTransientFactory<TestInjectableInterface>([](int a, float b, std::unique_ptr<TestInjectable2> c) -> Injectable*{
+            auto instance = new TestInjectable3(a, b, std::move(c));
+            return instance;
+        });
+
+        CHECK_THROWS(injector.RegisterTransientFactory<TestInjectableInterface>([](int a, float b, std::unique_ptr<TestInjectable2> c) -> Injectable*{
+            auto instance = new TestInjectable3(a, b, std::move(c));
+            return instance;
+        }));
+    }
+
+    SUBCASE("With a tag")
+    {
+        injector.RegisterTransientFactory<TestInjectableInterface>([](int a, float b, std::unique_ptr<TestInjectable2> c) -> Injectable*{
+            auto instance = new TestInjectable3(a, b, std::move(c));
+            return instance;
+        }, "test1");
+
+        CHECK_THROWS(injector.RegisterTransientFactory<TestInjectableInterface>([](int a, float b, std::unique_ptr<TestInjectable2> c) -> Injectable*{
+            auto instance = new TestInjectable3(a, b, std::move(c));
             return instance;
         }, "test1"));
     }
@@ -548,14 +745,14 @@ TEST_CASE("Transient registration and fail with polymorphism")
 
     SUBCASE("Without a tag")
     {
-        injector.RegisterTransient<TestInjectableInterface>([]() -> Injectable*
+        injector.RegisterTransientFactory<TestInjectableInterface>([]() -> Injectable*
         {
             auto instance = new TestInjectable2();
             instance->a = 1;
             return instance;
         });
 
-        CHECK_THROWS(injector.RegisterTransient<TestInjectableInterface>([]() -> Injectable*
+        CHECK_THROWS(injector.RegisterTransientFactory<TestInjectableInterface>([]() -> Injectable*
         {
             auto instance = new TestInjectable2();
             instance->a = 2;
@@ -565,14 +762,14 @@ TEST_CASE("Transient registration and fail with polymorphism")
 
     SUBCASE("With a tag")
     {
-        injector.RegisterTransient<TestInjectableInterface>([]() -> Injectable*
+        injector.RegisterTransientFactory<TestInjectableInterface>([]() -> Injectable*
         {
             auto instance = new TestInjectable2();
             instance->a = 1;
             return instance;
         }, "test1");
 
-        CHECK_THROWS(injector.RegisterTransient<TestInjectableInterface>([]() -> Injectable*
+        CHECK_THROWS(injector.RegisterTransientFactory<TestInjectableInterface>([]() -> Injectable*
         {
             auto instance = new TestInjectable2();
             instance->a = 2;
