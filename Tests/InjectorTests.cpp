@@ -68,6 +68,7 @@ public:
 
 };
 
+
 TEST_CASE("Multiparam Test with strings and pointers")
 {
     auto injector = Injector{};
@@ -84,6 +85,29 @@ TEST_CASE("Multiparam Test with strings and pointers")
         try
         {
             auto instance = injector.ResolveTransient<TestInjectable4, const std::string &, int*>("test", a);
+            CHECK(true);
+            CHECK(instance->a == "test");
+            CHECK(instance->b == 5);
+        }
+        catch (const std::runtime_error& e)
+        {
+            INFO(std::string_view(e.what()));
+            CHECK(false);
+        }
+    }
+
+    SUBCASE("With a tag")
+    {
+        int a = 5;
+        injector.RegisterTransientTag<TestInjectable4>([](const std::string&, long a) -> Injectable*
+        {
+            auto instance = new TestInjectable4("test", a);
+            return instance;
+        }, "test");
+
+        try
+        {
+            auto instance = injector.ResolveTransientTag<TestInjectable4, const std::string&, long>("test", "fuck", a);
             CHECK(true);
             CHECK(instance->a == "test");
             CHECK(instance->b == 5);
